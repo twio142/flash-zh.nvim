@@ -140,10 +140,10 @@ end
 
 -- @param opts table
 -- @field opts.char_map table Char map for flypy.
--- @field[opt] opts.char_map.comma table Override the default comma map.
--- @field[opt] opts.char_map.append_comma table Append to the default comma map.
--- @field[opt] opts.char_map.append_char1 table Append to the default char1patterns map.
--- @field[opt] opts.char_map.append_char2 table Append to the default char2patterns map.
+-- @field opts.char_map.comma table|nil Override the default comma map.
+-- @field opts.char_map.append_comma table|nil Append to the default comma map.
+-- @field opts.char_map.append_char1 table|nil Append to the default char1patterns map.
+-- @field opts.char_map.append_char2 table|nil Append to the default char2patterns map.
 function M.setup(opts)
 	opts = opts or {}
 	if not opts.char_map then
@@ -165,7 +165,7 @@ function M.setup(opts)
 			if #k ~= 1 then
 				error("append_comma key must be a single character")
 			else
-				local chars = flypy.comma[k] or ""
+				local chars = flypy.comma[k] or ("[" .. k .. "]")
 				chars = string.sub(chars, 2, -2) .. vim.fn.escape(v, to_escape)
 				flypy.comma[k] = "[" .. chars .. "]"
 			end
