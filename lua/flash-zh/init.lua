@@ -190,6 +190,9 @@ function M.setup(opts)
 				local chars = flypy.char2patterns[k] or ""
 				chars = string.sub(chars, 2, -2) .. vim.fn.escape(v, to_escape)
 				flypy.char2patterns[k] = "[" .. chars .. "]"
+				chars = flypy.char1patterns[k:sub(1, 1)] or ""
+				chars = string.sub(chars, 2, -2) .. vim.fn.escape(v, to_escape)
+				flypy.char1patterns[k:sub(1, 1)] = "[" .. chars .. "]"
 			end
 		end
 	end
