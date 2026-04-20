@@ -5,19 +5,70 @@ local M = {}
 
 function M.jump(opts)
 	local mode = M.mix_mode
-	if opts.chinese_only then
+	if opts and opts.chinese_only then
 		mode = M.zh_mode
 	end
 	opts = vim.tbl_deep_extend("force", {
 		labels = "asdfghjklqwertyuiopzxcvbnm",
 		search = {
 			mode = mode,
+			incremental = false,
+		},
+		label = {
+			min_pattern_length = 2,
 		},
 		labeler = function(_, state)
 			require("flash-zh.labeler").new(state):update()
 		end,
 	}, opts or {})
-	flash.jump(opts)
+
+	local Repeat = require("flash.repeat")
+	local Prompt = require("flash.prompt")
+	local state = Repeat.get_state("jump", opts)
+
+	while true do
+		local cont = state:step()
+		if cont then
+			-- Move cursor to the nearest match so the user sees where they'll
+			-- land as they type — same effect as incremental search, but driven
+			-- from outside step() to avoid the nvim_input(c) side-effect that
+			-- incremental=true triggers when there are no results.
+			-- skip in operator-pending mode
+			if state.target and not vim.fn.mode(true):find("^no") then
+				vim.api.nvim_win_set_cursor(state.win, state.target.pos)
+			end
+		elseif #state.results == 0 and not state.pattern:empty() then
+			-- no visible results — search the full buffer for the next match.
+			-- use the current cursor (not stale state.pos) so repeated scrolls
+			-- keep advancing forward rather than jumping back to the origin.
+			local cur = vim.api.nvim_win_get_cursor(state.win)
+			local target = state:find({
+				pos = cur,
+				forward = state.opts.search.forward,
+				wrap = state.opts.search.wrap,
+			})
+			-- guard: if target == cur, searchpos wrapped to the same spot —
+			-- there is nothing new to scroll to, so exit cleanly.
+			if target and not (target.pos[1] == cur[1] and target.pos[2] == cur[2]) then
+				vim.api.nvim_win_set_cursor(state.win, target.pos)
+				-- _dirty() detects the topline/botline change, creates a new
+				-- cache key, and get_state() does a fresh search for the new
+				-- visible range without needing an explicit cache clear.
+				state:update()
+				if #state.results == 0 then
+					break
+				end
+				-- loop continues: next step() waits for next keypress
+			else
+				break
+			end
+		else
+			break
+		end
+	end
+
+	state:hide()
+	Prompt.hide()
 end
 
 function M.mix_mode(str)
